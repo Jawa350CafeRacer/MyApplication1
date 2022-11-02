@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
+
     <item
+
         android:id="@+id/item_1"
-        android:title="Peview"/>
+        android:title="Preview"/>
+
     <item
         android:id="@+id/item_2"
         android:title="Add Photo"/>
@@ -16,5 +19,6 @@
     <item
         android:id="@+id/item_5"
         android:title="Delete"/>
+
 
 </menu>

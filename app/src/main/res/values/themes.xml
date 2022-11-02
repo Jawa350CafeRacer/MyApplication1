@@ -11,8 +11,18 @@
         <item name="colorOnSecondary">@color/black</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+
         <!-- Customize your theme here. -->
+        <item name="popupMenuBackground">@drawable/menu_background</item>
+        <item name="android:popupMenuStyle">@style/popupStyle</item>
+
+
     </style>
+
+    <style name="popupStyle" parent="@style/Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">@drawable/menu_background</item>
+
+    </style>
+
+
 </resources>

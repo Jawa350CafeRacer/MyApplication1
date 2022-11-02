@@ -3,10 +3,10 @@
 
 
     <item
-        android:id="@+id/item_1"
+        android:id="@+id/item_11"
         android:title="Add Photo"/>
     <item
-        android:id="@+id/item_2"
+        android:id="@+id/item_22"
         android:title="From Gallery"/>
 
 

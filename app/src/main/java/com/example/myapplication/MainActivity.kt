@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -8,29 +9,31 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.ContextMenu
-import android.view.MenuItem
-import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.PopupMenu
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.bumptech.glide.Glide
 import com.example.myapplication.databinding.ActivityMainBinding
 import java.io.ByteArrayOutputStream
 
-class MainActivity : AppCompatActivity(), FotoAdapter.Listener {
+class MainActivity : AppCompatActivity(), PhotoAdapter.Listener {
 
     lateinit var binding: ActivityMainBinding
     private val cameraRequestCode = 1
     private val galleryRequestCode = 2
     private var imageUri: Uri?=null
     private var tempUri: Uri?=null
-    private val adapter = FotoAdapter(this)
+    private val adapter = PhotoAdapter(this)
+    private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
+    private var isCameraPermissionGranted = false
+    private var isReadPermissionGranted = false
+    private var isWritePermissionGranted = false
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,124 +41,111 @@ class MainActivity : AppCompatActivity(), FotoAdapter.Listener {
         binding=ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        registerForContextMenu(binding.buttonAdd)
 
+        permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){
+            permissions ->
+            isCameraPermissionGranted = permissions[Manifest.permission.CAMERA] ?: isCameraPermissionGranted
+            isReadPermissionGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: isReadPermissionGranted
+            isWritePermissionGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: isWritePermissionGranted
+        }
+
+        requestPermission()
         init()
-    }
 
-    override fun onCreateContextMenu(
-        menu: ContextMenu?,
-        v: View?,
-        menuInfo: ContextMenu.ContextMenuInfo?
-    ) {
-        super.onCreateContextMenu(menu, v, menuInfo)
-        menuInflater.inflate(R.menu.menu_item,menu)
-    }
+        val popupMenu1 = PopupMenu(
+            this,
+            binding.buttonAdd,
+        )
+        popupMenu1.menuInflater.inflate(R.menu.menu1_item, popupMenu1.menu)
+        popupMenu1.setOnMenuItemClickListener { MenuItem ->
+            val id = MenuItem.itemId
 
 
-
-    override fun onContextItemSelected(item: MenuItem): Boolean{
-        when(item.itemId){
-            R.id.item_2 -> {
-                cameraCheckPermission()
-                galleryCheckPermissionW()
-                galleryCheckPermissionR()
-                when (Build.VERSION.SDK_INT) {
-                    in 1..22 -> {
-                        if (allPPermissionGranted() && allPPermissionGrantedW() && allPPermissionGrantedR()) {
-                            camera()
-                        }
-                    }
-                    else ->
-                        if (allPPermissionGranted() && allPPermissionGrantedR()) {
-                            camera()
-                        }
-                }
-            }
-            R.id.item_3 -> {
-                galleryCheckPermissionW()
-                galleryCheckPermissionR()
-                if (allPPermissionGrantedR()) {
+           if     (id == R.id.item_11) {
+               camera()
+           }
+           else if     (id == R.id.item_22)  {
                     gallery()
                 }
+            false
 
+        }
+        binding.buttonAdd.setOnClickListener {
+            popupMenu1.show()
+        }
+
+
+    }
+
+    private fun requestPermission(){
+        isCameraPermissionGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        isReadPermissionGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        isWritePermissionGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val permissionRequest : MutableList<String> = ArrayList()
+
+        if (!isCameraPermissionGranted){
+            permissionRequest.add(Manifest.permission.CAMERA)
+        }
+        if (!isReadPermissionGranted){
+            permissionRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        if (!isWritePermissionGranted){
+            permissionRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+        if (permissionRequest.isNotEmpty()){
+            permissionLauncher.launch(permissionRequest.toTypedArray())
+        }
+    }
+
+    override fun onclick(uri: Uri) {
+        imageUri=uri
+
+        val popupMenu = PopupMenu(
+            this,
+            binding.rcView,
+        )
+        popupMenu.menuInflater.inflate(R.menu.menu_item, popupMenu.menu)
+        popupMenu.setOnMenuItemClickListener { MenuItem ->
+            val id = MenuItem.itemId
+
+
+            if     (id == R.id.item_2) {
+                camera()
             }
-            R.id.item_4 -> {
-
-
-                tempUri?.let { adapter.fotolist.add(it) }
+            else if     (id == R.id.item_3)  {
+                gallery()
+            }
+            else if     (id == R.id.item_4)  {
+                tempUri?.let { adapter.photoList.add(it) }
                 Glide.with(this@MainActivity).load(imageUri).into(binding.imageView5)
                 tempUri = imageUri
                 adapter.removeItem(imageUri)
             }
-            R.id.item_5 -> {
+            else if     (id == R.id.item_5)  {
                 adapter.removeItem(imageUri)
             }
+            false
+
         }
-        return super.onContextItemSelected(item)
+
+            popupMenu.show()
+
     }
 
-    private fun cameraCheckPermission() {
-        if (allPPermissionGranted()){
-            //Toast.makeText(this,
-            //"Camera permission", Toast.LENGTH_SHORT).show()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, Constants.REQUIRED_PERMISSIONS_CAMERA,
-                Constants.REQUEST_CODE_PERMISSIONS
-            )
-        }
-    }
-    private fun galleryCheckPermissionR() {
-        if (allPPermissionGrantedR()){
-            //Toast.makeText(this,
-            //"Read permission", Toast.LENGTH_SHORT).show()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, Constants.REQUIRED_PERMISSIONS_READ,
-                Constants.REQUEST_CODE_PERMISSIONS,
-            )
-        }
-    }
-    private fun galleryCheckPermissionW() {
 
-        when (Build.VERSION.SDK_INT) {
-            in 1..22 -> {
-
-                if (allPPermissionGrantedW()) {
-                    //Toast.makeText(this,
-                    //"Write permission", Toast.LENGTH_SHORT).show()
-                } else {
-                    ActivityCompat.requestPermissions(
-                        this, Constants.REQUIRED_PERMISSIONS_WRITE,
-                        Constants.REQUEST_CODE_PERMISSIONS,
-                    )
-                }
-            }
-            else -> //Toast.makeText(this,
-               // "Write permission not need SDK>", Toast.LENGTH_SHORT).show()
-            return
-        }
-    }
-    private fun allPPermissionGranted() =
-        Constants.REQUIRED_PERMISSIONS_CAMERA.all {
-            ContextCompat.checkSelfPermission(
-                baseContext, it
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    private fun allPPermissionGrantedR() =
-        Constants.REQUIRED_PERMISSIONS_READ.all {
-            ContextCompat.checkSelfPermission(
-                baseContext, it
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    private fun allPPermissionGrantedW() =
-        Constants.REQUIRED_PERMISSIONS_WRITE.all {
-            ContextCompat.checkSelfPermission(
-                baseContext, it
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    private fun camera(){
+        private fun camera(){
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         startActivityForResult(intent, cameraRequestCode)
     }
@@ -178,13 +168,13 @@ class MainActivity : AppCompatActivity(), FotoAdapter.Listener {
                     val bitmap = data?.extras?.get("data") as Bitmap
 
                     val uri = getImageUriFromBitmap(this@MainActivity, bitmap)
-                    adapter.fotolist.add(uri)
+                    adapter.photoList.add(uri)
                     binding.rcView.adapter!!.notifyDataSetChanged()
 
                     val imageData = data.data
                     if (imageData != null) {
 
-                        adapter.fotolist.add(uri)
+                        adapter.photoList.add(uri)
                         binding.rcView.adapter!!.notifyDataSetChanged()
 
                     }
@@ -196,19 +186,13 @@ class MainActivity : AppCompatActivity(), FotoAdapter.Listener {
                         val imageData = data.data
                         if (imageData != null) {
 
-                            adapter.fotolist.add(imageData)
+                            adapter.photoList.add(imageData)
                             binding.rcView.adapter!!.notifyDataSetChanged()
                         }
                     }
+                }
             }
         }
-    }
-}
-
-    override fun onclick(uri: Uri) {
-        imageUri=uri
-        openContextMenu(binding.rcView)
-        registerForContextMenu(binding.rcView)
     }
 
     private fun getImageUriFromBitmap(context: Context, bitmap: Bitmap): Uri{
@@ -218,52 +202,21 @@ class MainActivity : AppCompatActivity(), FotoAdapter.Listener {
         return Uri.parse(path.toString())
     }
 
-    private fun init(){
+    private fun init() {
         binding.apply {
 
             val warehouse = resources.getStringArray(R.array.Warehouse)
-            val warehouseAdapter = ArrayAdapter(this@MainActivity, R.layout.dropdown_item, warehouse)
+            val warehouseAdapter =
+                ArrayAdapter(this@MainActivity, R.layout.dropdown_item, warehouse)
             binding.autoCompleteTextView3.setAdapter(warehouseAdapter)
             rcView.layoutManager = GridLayoutManager(this@MainActivity, 5)
             rcView.adapter = adapter
-            buttonAdd.setOnClickListener{
 
-                btnCamera.visibility = View.VISIBLE
-                btnCamera.setOnClickListener {
-
-                    cameraCheckPermission()
-                    galleryCheckPermissionW()
-                    galleryCheckPermissionR()
-                    when (Build.VERSION.SDK_INT) {
-                        in 1..22 -> {
-                            if (allPPermissionGranted() && allPPermissionGrantedW() && allPPermissionGrantedR()) {
-                                camera()
-                            }
-                        }
-                        else ->
-                            if (allPPermissionGranted() && allPPermissionGrantedR()) {
-                                camera()
-                            }
-                    }
-
-                    btnCamera.visibility = View.GONE
-                    btnGallery.visibility = View.GONE
-                }
-                btnGallery.visibility = View.VISIBLE
-                btnGallery.setOnClickListener {
-                    galleryCheckPermissionR()
-                    if (allPPermissionGrantedR()) {
-                        gallery()
-                    }
-
-
-                    btnCamera.visibility = View.GONE
-                    btnGallery.visibility = View.GONE
-                }
-            }
         }
     }
 }
+
+
 
 
 
